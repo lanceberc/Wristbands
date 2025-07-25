@@ -1,0 +1,565 @@
+/* storyboard.js
+ * 
+ * Keep track of sailors using RFID wristbands
+ *
+ * Optimized for Zebra EM45 Android screen
+ * https://www.zebra.com/us/en/products/spec-sheets/mobile-computers/handheld/em45-rfid.html
+ * Screen is 2400x1080, mock up is 1/4 resolution (1200x540)
+ */
+var Regatta = null;
+var Sailors = null;
+const statusLabels = {
+    "On the water": "Sailing",
+    "On shore": "Shore",
+    "Unknown": "Unknown",
+    "None": "Unknown",
+    "": "Unknown"
+}
+
+const statusClasses = {
+    "On the water": "atsea",
+    "On shore": "onshore",
+    "Unknown": "unknown",
+    "None": "unknown",
+    "": "unknown"
+}
+
+const sailorFields = {}
+const sailorFieldLabels = {
+    "First Name": "First",
+    "Last Name": "Last",
+    "Sail Number": "Sail",
+    "Class": "Class",
+    "Status": "Status",
+    "Last Updated": "Last",
+    "Wristbands": "Tags"
+};
+
+let currentMode = null;
+
+function changeSailorStatus(row, status) {
+    // This is where an external database update would happen
+    const statusIndex = sailorFields["Status"]
+    Sailors.data[row][statusIndex] = status;
+
+    const now = new Date();
+    const time = now.format("mmm d yyyy, h:MM TT");
+    const timeIndex = sailorFields["Last Updated"];
+    Sailors.data[row][timeIndex] = time;
+    
+    for (const el of document.getElementsByClassName(`status-${row}`)) {
+	el.classList.remove("atsea", "onshore", "unknown");
+	el.classList.add(statusClasses[status]);
+	el.innerHTML = statusLabels[status];
+    }
+
+    for (const el of document.getElementsByClassName(`timestamp-${row}`)) {
+	el.innerHTML = time;
+    }
+    
+    const unused = statusSummary();
+}
+
+function scanned(row) {
+    const sailor = Sailors.data[row];
+	
+    const first = sailor[sailorFields["First Name"]];
+    const last = sailor[sailorFields["Last Name"]];
+    const sailNumber = sailor[sailorFields["Sail Number"]];
+    const sailClass = sailor[sailorFields["Class"]];
+    const timestamp = sailor[sailorFields["Last Updated"]];
+    const status =  sailor[sailorFields["Status"]];
+
+    let div;
+    const sceneWrap = document.getElementById("sceneWrap");
+    sceneWrap.innerHTML = "";
+
+    const scene = document.createElement("div");
+    scene.id = "scene";
+    scene.classList.add("scene");
+    scene.classList.add(statusClasses[status]);
+    
+    sceneWrap.appendChild(scene);
+
+    const summary = genStatusSummary();
+    scene.appendChild(summary);
+    summaryCounts = statusSummary();
+
+    const ss = document.createElement("div");
+    ss.innerHTML = "";
+    scene.appendChild(ss);
+	
+    div = document.createElement("div");
+    div.innerHTML = `${first} ${last}`;
+    ss.appendChild(div);
+	
+    div = document.createElement("div");
+    div.innerHTML = `Class: ${sailClass}`;
+    ss.appendChild(div);
+	
+    div = document.createElement("div");
+    div.innerHTML = `Sail/Bib: ${sailNumber}`;
+    ss.appendChild(div);
+	
+    div = document.createElement("div");
+    div.innerHTML = `${timestamp}`;
+    ss.appendChild(div);
+    
+    div = document.createElement("div");
+    div.innerHTML = `${status}`;
+    div.classList.add(statusClasses[status]);
+    ss.appendChild(div);
+
+    div = document.createElement("div");
+    div.innerHTML = "Change Status";
+    div.classList.add("button");
+    div.classList.add("neutral");
+    div.sailorRow = row;
+    div.addEventListener("click", changeStatusManually);
+    scene.appendChild(div);
+}
+
+function genStatusSummary() {
+    const summary = document.createElement("div");
+    summary.classList.add("statusSummary");
+
+    let span;
+    
+    const otw = document.createElement("div");
+    otw.classList.add("statusItem");
+    otw.classList.add("atsea");
+    span = document.createElement("span");
+    span.innerHTML = `<div>Sailing</div><div class="count-otw"></div>`;
+    otw.appendChild(span);
+    summary.appendChild(otw);
+    
+    const onShore = document.createElement("div");
+    onShore.classList.add("statusItem");
+    onShore.classList.add("onshore");
+    span = document.createElement("span");
+    span.innerHTML = `<div>Shore</div><div class="count-onshore"></div>`;
+    onShore.appendChild(span);
+    summary.appendChild(onShore);
+    
+    const unknown = document.createElement("div");
+    unknown.classList.add("statusItem");
+    unknown.classList.add("unknown");
+    span = document.createElement("span");
+    span.innerHTML = `<div>Unknown</div><div class="count-unknown"></div>`;
+    unknown.appendChild(span);
+    summary.appendChild(unknown);
+
+    return summary;
+}
+
+function scan() {
+    console.log(`Scan clicked current mode ${currentMode}`);
+
+    if (currentMode == "CheckOut") {
+	let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
+	changeSailorStatus(sailorRow, "On the water");
+	scanned(sailorRow);
+    }
+
+    if (currentMode == "CheckIn") {
+	let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
+	changeSailorStatus(sailorRow, "On shore");
+	scanned(sailorRow);
+    }
+
+    if (currentMode == "CheckTag") {
+	let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
+	scanned(sailorRow);
+    }
+}
+
+function checkOut() {
+    const screen = document.getElementById("screen");
+    screen.classList.add("atsea");
+    screen.classList.remove("onshore", "checking", "status");
+
+    const mode = document.getElementById("mode");
+    mode.innerHTML = "Checking Out";
+
+    const sceneWrap = document.getElementById("sceneWrap");
+    sceneWrap.innerHTML = "";
+    const scene = document.createElement("div");
+    scene.id = "scene";
+    scene.classList.add("scene");
+    sceneWrap.appendChild(scene);
+
+    const summary = genStatusSummary();
+    scene.appendChild(summary);
+    summaryCounts = statusSummary();
+
+    const div = document.createElement("div");
+    div.innerHTML = "<p>Checking Out...</p><p>Press Button to Scan</p>";
+    scene.appendChild(div);
+
+    const scan = document.getElementById("scan");
+    scan.classList.remove("hidden");
+    currentMode = "CheckOut";
+}
+
+function checkIn() {
+    const screen = document.getElementById("screen");
+    screen.classList.add("onshore");
+    screen.classList.remove("atsea", "checking", "status");
+
+    const mode = document.getElementById("mode");
+    mode.innerHTML = "Checking In";
+
+    const sceneWrap = document.getElementById("sceneWrap");
+    sceneWrap.innerHTML = "";
+
+    const scene = document.createElement("div");
+    scene.id = "scene";
+    scene.classList.add("scene");
+    sceneWrap.appendChild(scene);
+
+    const summary = genStatusSummary();
+    scene.appendChild(summary);
+    summaryCounts = statusSummary();
+
+    const div = document.createElement("div");
+    div.innerHTML = "<p>Checking In...</p><p>Press Button to Scan</p>";
+    scene.appendChild(div);
+
+    const scan = document.getElementById("scan");
+    scan.classList.remove("hidden");
+
+    currentMode = "CheckIn";
+}
+
+function changeStatusManually(e) {
+    let action = null;
+    let div;
+    const target = e.target;
+    const sailorRow = target.sailorRow;
+    const s = Sailors.data[sailorRow];
+
+    function enableConfirm(e) {
+	let div;
+	el = e.target;
+	action = el.sailorAction;
+	console.log(`changeStatus row ${sailorRow} to ${action}`);
+
+	div = document.getElementById("modalName");
+	div.classList.remove("atsea", "onshore", "unknown");
+	div.classList.add(statusClasses[action]);
+
+	div = document.getElementById("modalStatus");
+	div.classList.remove("atsea", "onshore", "unknown");
+	div.classList.add(statusClasses[action]);
+	div.innerHTML = `${statusLabels[action]}`;
+    }
+
+    function confirm(e) {
+	el = e.target;
+	if (el.innerHTML == "OK") {
+	    console.log(`confirm changeStatus row ${sailorRow} to ${action}`);
+	    changeSailorStatus(sailorRow, action);
+	    if (currentMode == "CheckIn" || currentMode == "CheckOut" || currentMode == "CheckTag") {
+		scanned(sailorRow);
+	    }
+	}
+	dialog.close();
+    }
+
+    console.log(`Change status for row ${sailorRow}`);
+
+    const status = s[sailorFields["Status"]];
+
+    const dialog = document.getElementById("dialog");
+    dialog.innerHTML = "";
+    div = document.createElement("div");
+    div.id = "modalName";
+    div.classList.add(statusClasses[status]);
+    const first = s[sailorFields["First Name"]];
+    const last = s[sailorFields["Last Name"]];
+    div.innerHTML = `${first} ${last}`;
+    dialog.appendChild(div);
+
+    div = document.createElement("div");
+    dialog.appendChild(div);
+    div.id = "modalStatus";
+    div.classList.add(statusClasses[status]);
+    div.innerHTML = `${statusLabels[status]}`;
+
+    div = document.createElement("div");
+    dialog.appendChild(div);
+    div.innerHTML = "<span>&nbsp;</span>";
+    
+    div = document.createElement("div");
+    dialog.appendChild(div);
+    div.innerHTML = "Change To";
+    
+    div = document.createElement("div");
+    div.classList.add("button");
+    div.classList.add("modalButton");
+    div.classList.add(statusClasses["On the water"]);
+    div.innerHTML = `${statusLabels["On the water"]}`;
+    div.addEventListener("click", enableConfirm);
+    div.sailorRow = sailorRow;
+    div.sailorAction = "On the water";
+    dialog.appendChild(div);
+    
+    div = document.createElement("div");
+    div.classList.add("button");
+    div.classList.add("modalButton");
+    div.classList.add(statusClasses["On shore"]);
+    div.innerHTML = `${statusLabels["On shore"]}`;
+    div.addEventListener("click", enableConfirm);
+    div.sailorRow = sailorRow;
+    div.sailorAction = "On shore";
+    dialog.appendChild(div);
+
+    div = document.createElement("div");
+    div.classList.add("button");
+    div.classList.add("modalButton");
+    div.classList.add(statusClasses[""]);
+    div.innerHTML = `${statusLabels[""]}`;
+    div.addEventListener("click", enableConfirm);
+    div.sailorRow = sailorRow;
+    div.sailorAction = "Unknown";
+    dialog.appendChild(div);
+    
+    div = document.createElement("div");
+    dialog.appendChild(div);
+    div.innerHTML = "<span>&nbsp;</span>";
+    
+    const confirmBar = document.createElement("div");
+    confirmBar.classList.add("modalConfirm");
+    dialog.appendChild(confirmBar);
+
+    div = document.createElement("div");
+    div.classList.add("button");
+    div.classList.add("neutral");
+    div.classList.add("modalButton");
+    div.innerHTML = "Cancel";
+    div.addEventListener("click", confirm);
+    confirmBar.appendChild(div);
+    
+    div = document.createElement("div");
+    div.classList.add("button");
+    div.classList.add("neutral");
+    div.classList.add("modalButton");
+    div.innerHTML = "OK";
+    div.addEventListener("click", confirm);
+    confirmBar.appendChild(div);
+
+    dialog.showModal();
+}
+
+function genSailorTable() {
+    const statusFields = ["Last Name", "First Name", "Sail Number", "Class", "Status", "Last Updated", "Wristbands"];
+    
+    const sailorTable = document.createElement("table");
+    sailorTable.classList.add("sortable");
+    sailorTableWrap.appendChild(sailorTable);
+
+    const thead = document.createElement("thead");
+    sailorTable.appendChild(thead);
+    const header = document.createElement("tr");
+    thead.appendChild(header);
+    for (let f of statusFields) {
+	const colHeader = document.createElement("th");
+	header.appendChild(colHeader);
+	const button = document.createElement("button");
+	colHeader.appendChild(button);
+	button.innerHTML = `${sailorFieldLabels[f]}<span aria-hidden="true"></span>`;
+    }
+
+    const tbody = document.createElement("tbody");
+    sailorTable.appendChild(tbody);
+    
+    for (var s = 2; s < Sailors.data.length; s++) {
+	sailor = Sailors.data[s];
+	const row = document.createElement("tr");
+	tbody.appendChild(row);
+	for (f of statusFields) {
+	    const data = document.createElement("td");
+	    row.appendChild(data);
+	    let field = sailor[sailorFields[f]];
+	    if (f == "Status") {
+		data.sailorRow = s; // stash row for manual status change
+		data.classList.add("statusData");
+		data.classList.add(statusClasses[field]);
+		data.classList.add(`status-${s}`);
+		field = statusLabels[field];
+		data.addEventListener("click", changeStatusManually);
+	    }
+	    if (f == "Last Updated") {
+		data.classList.add(`timestamp-${s}`);
+	    }
+	    data.innerHTML = field;
+	}
+    }
+    new SortableTable(sailorTable);
+
+    return(sailorTable);
+    //fitText(document.getElementById("scene"), 0.4);
+}
+
+function statusSummary() {
+    let onTheWater = 0;
+    let onShore = 0;
+    let unknown = 0;
+
+    // Can be called at init time before data is loaded
+    if (!Sailors) return;
+
+    for (s = 2; s <  Sailors.data.length; s++) {
+	const sailor = Sailors.data[s];
+	const status = sailor[sailorFields["Status"]];
+	if (status == "On the water") {
+	    onTheWater++;
+	} else if (status == "On shore") {
+	    onShore++;
+	} else {
+	    unknown++;
+	}
+    }
+    
+    for (const el of document.getElementsByClassName("count-otw")) {
+	el.innerHTML = onTheWater;
+    }
+    for (const el of document.getElementsByClassName("count-onshore")) {
+	el.innerHTML = onShore;
+    }
+    for (const el of document.getElementsByClassName("count-unknown")) {
+	el.innerHTML = unknown;
+    }
+    
+    return({"On the water": onTheWater, "On shore": onShore, "Unknown": unknown});
+}
+    
+function status() {
+    const screen = document.getElementById("screen");
+    screen.classList.add("status");
+    screen.classList.remove("atsea", "onshore", "checking");
+
+    const mode = document.getElementById("mode");
+    mode.innerHTML = "Status";
+
+    const sceneWrap = document.getElementById("sceneWrap");
+    sceneWrap.innerHTML = "";
+    const scene = document.createElement("div");
+    scene.id = "scene";
+    scene.classList.add("statusScene");
+    sceneWrap.appendChild(scene);
+
+    const summary = genStatusSummary();
+    scene.appendChild(summary);
+    summaryCounts = statusSummary();
+
+    const tableWrap = document.createElement("div");
+    tableWrap.id = "sailorTableWrap";
+    tableWrap.classList.add("sailorTableWrap");
+    scene.appendChild(tableWrap);
+    
+    const sailorTable = genSailorTable();
+    sailorTable.id = "statusTable";
+    sailorTable.classList.add("sailorTable");
+    tableWrap.innerHTML = ''; // delete previous table if any
+    tableWrap.appendChild(sailorTable);
+
+    const scan = document.getElementById("scan");
+    scan.classList.add("hidden");
+    currentMode = "Status";
+}
+
+function checkTag() {
+    const screen = document.getElementById("screen");
+    screen.classList.add("checking");
+    screen.classList.remove("atsea", "onshore", "status");
+
+    const mode = document.getElementById("mode");
+    mode.innerHTML = "Check Tags";
+
+    const sceneWrap = document.getElementById("sceneWrap");
+    sceneWrap.innerHTML = "";
+    const scene = document.createElement("div");
+    scene.id = "scene";
+    scene.classList.add("scene");
+    sceneWrap.appendChild(scene);
+    
+    const summary = genStatusSummary();
+    scene.appendChild(summary);
+    summaryCounts = statusSummary();
+
+    const div = document.createElement("div");
+    div.innerHTML = "<p>Check Tags...</p><p>Press Button to Scan</p>";
+    scene.appendChild(div);
+
+    const scan = document.getElementById("scan");
+    scan.classList.remove("hidden");
+    currentMode = "CheckTag";
+}
+
+const menuItems = [
+    { "label": "Check Out", "action": checkOut},
+    { "label": "Check In", "action": checkIn },
+    { "label": "Status", "action": status},
+    { "label": "Check Tag", "action": checkTag}
+];
+
+function createMenu() {
+    const m = document.getElementById("modeContent");
+    for (let e of menuItems) {
+	let i = document.createElement("div");
+	i.innerHTML = e.label;
+	i.addEventListener("click", e.action);
+	m.appendChild(i);
+    }
+}
+
+function updateClock() {
+    const now = new Date();
+    const time = now.format("HH:MM");
+    const clock = document.getElementById("clock");
+    clock.innerHTML = time;
+}
+
+function regattaLoaded(sailors) {
+    // PapaParse is returning an extra row
+    if (sailors.data[sailors.data.length-1].length == 1) {
+	const u = sailors.data.pop();
+	console.log("Deleting last row");
+    }
+    Sailors = sailors;
+
+    var column = 0;
+    for (var f of Sailors.data[1]) {
+	if (f == " ") f = "Row";
+	sailorFields[f] = column;
+	column++;
+    }
+    
+    console.log(`Loaded regatta ${Regatta.label}`);
+    statusSummary();
+}
+
+function initialize() {
+    //const screen = document.getElementById("screen");
+    //screen.classList.add("atsea");
+    const href = window.location.href;
+
+    menuItems[0].action();
+    createMenu();
+    const b = document.getElementById("scan");
+    b.addEventListener("click", scan);
+    const intervalID = setInterval(updateClock, 1000);
+
+    Regatta = config.regattas[0];
+
+    const url = `${href.substring(0, href.lastIndexOf("/"))}/${Regatta.file}`;
+    Papa.parse(url, {
+	download: true,
+	complete: regattaLoaded
+    });
+    
+}
+
+//window.addEventListener('DOMContentLoaded', initialize);
+window.addEventListener('load', initialize);
