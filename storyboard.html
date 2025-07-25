@@ -9,7 +9,7 @@
     <script src="papaparse.js"></script>
     <script src="sortabletable.js"></script>
     <script src="storyboard.js"></script>
-    <script type="text/javascript" src="config.json"></script>
+    <script src="config.js"></script>
   <head>
   </head>
     <meta charset="UTF-8">
@@ -21,25 +21,30 @@
   <body>
     <div id="screen" class="screen">
       <div class="header">
-	<div class="modeSelector">
-	  <div id="modeButton" class="button neutral">Mode</div>
-	  <div id="modeContent" class="modeContent"></div>
+	<div class="headerTopRow">
+	  <div class="modeSelector">
+	    <div id="modeButton" class="button neutral">Mode</div>
+	    <div id="modeContent" class="modeContent"></div>
+	  </div>
+	  <div id="currentMode" class="currentMode"></div>
+	  <div class="burgee-container">
+	    <div class="burgee-right"><img src="stfyc-burgee2.svg"></div>
+	  </div>
 	</div>
-	<div id="mode" class="mode"></div>
-	<div class="burgee-container">
-	  <div class="burgee-right"><img src="stfyc-burgee2.svg"></div>
+	<div class="headerBottomRow">
+	  <div id="summaryBar" class="headerBottomRow"></div>
 	</div>
       </div>
       <div id="sceneWrap" class="sceneWrap">
-	<div id="scene" class="scene">
-	</div>
       </div>
-      <dialog id="dialog" class="modal"></dialog>
       <div id="footer" class="footer">
-	<div id="clock" class="clock">17:50</div>
-	<div></div>
+	<div id="clock" class="clock">00:00</div>
+	<div>
+	  <div id="regatta" class="regattaLabel"></div>
+	</div>
 	<div id="scan" class="button neutral">Scan</div>
       </div>
     </div>
+    <dialog id="dialog" class="modal"></dialog>
   </body>
 </html>
