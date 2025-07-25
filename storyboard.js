@@ -352,7 +352,7 @@ function changeStatusManually(e) {
 }
 
 function genSailorTable() {
-    const statusFields = ["Last Name", "First Name", "Sail Number", "Class", "Status", "Last Updated", "Wristbands"];
+    const statusFields = ["Status", "Last Name", "First Name", "Sail Number", "Class", "Last Updated", "Wristbands"];
     
     const sailorTable = document.createElement("table");
     sailorTable.classList.add("sortable");
@@ -541,19 +541,28 @@ function regattaLoaded(sailors) {
 }
 
 function initialize() {
-    //const screen = document.getElementById("screen");
-    //screen.classList.add("atsea");
+    let queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    let regatta = urlParams.get('regatta');
+
+    if (!isNaN(regatta)) regatta = parseInt(regatta,10);
+    if (isNaN(regatta)) regatta = 0;
+    if (regatta > config.regattas.length) regatta = 0;
+    
     const href = window.location.href;
 
     menuItems[0].action();
     createMenu();
+    
     const b = document.getElementById("scan");
     b.addEventListener("click", scan);
+
     const intervalID = setInterval(updateClock, 1000);
 
-    Regatta = config.regattas[0];
+    Regatta = config.regattas[regatta];
 
     const url = `${href.substring(0, href.lastIndexOf("/"))}/${Regatta.file}`;
+    console.log(`Loading regatta ${regatta} ${config.regattas[regatta].label} from ${url}`);
     Papa.parse(url, {
 	download: true,
 	complete: regattaLoaded
