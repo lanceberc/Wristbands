@@ -235,7 +235,17 @@ button { /* used in table for sortable column headers */
     text-align: center;
 }
 
-
+/* What I've sussed out:
+ * The get the statusTable to scroll both horizontally and vertically
+ * (a) an outer div sets overflow to hidden
+ * (b) an inner div with a fixed-size width and height
+ *
+ * I couldn't find a way with the inner div that could grow/shrink;
+ * this means that width and height are device-specific. Maybe they
+ * can be set by Media Queries but it's probably easier in javascript
+ * or maybe media queries in javascript:
+ * https://css-tricks.com/working-with-javascript-media-queries/
+ */
 .statusTableOuter {
     overflow: hidden;
 }
@@ -243,15 +253,17 @@ button { /* used in table for sortable column headers */
 .statusTableInner {
     overflow: auto;
     /* The width and height are specific to the screen resolution */
-    width: 31rem;
-    height: 51rem;
+    width: 399px;
+    height: 670px;
+    /* width: 31rem; */
+    /* height: 51rem; */
 }
 
 .statusTable {
     background: var(--status);
     font-size: 1.4rem;
     overflow: auto;
-    width: max-content;
+    width: max-content; /* prevent elements from line-splitting */
 }
 
 .statusItem {
