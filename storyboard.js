@@ -15,6 +15,7 @@
  */
 var Regatta = null;
 var Sailors = null;
+
 const statusLabels = {
     "On the water": "Sailing",
     "On shore": "Shore",
@@ -23,6 +24,7 @@ const statusLabels = {
     "": "Unknown"
 }
 
+let allStatusClasses = ["atsea", "onshore", "unknown", "status"];
 const statusClasses = {
     "On the water": "atsea",
     "On shore": "onshore",
@@ -80,11 +82,12 @@ function scanned(row) {
     let div;
     const sceneWrap = document.getElementById("sceneWrap");
     sceneWrap.innerHTML = "";
+    sceneWrap.classList.remove("atsea", "onshore", "unknown", "status");
+    sceneWrap.classList.add(statusClasses[status]);
 
     const scene = document.createElement("div");
     scene.id = "scanned";
     scene.classList.add("scannedArea");
-    scene.classList.add(statusClasses[status]);
     
     sceneWrap.appendChild(scene);
 
@@ -117,6 +120,10 @@ function scanned(row) {
     div = document.createElement("div");
     div.innerHTML = `${timestamp}`;
     ss.appendChild(div);
+
+    // Spacer div
+    div = document.createElement("div");
+    scene.appendChild(div);
     
     div = document.createElement("div");
     div.innerHTML = "Change Status";
@@ -183,14 +190,16 @@ function scan() {
 
 function checkOut() {
     const screen = document.getElementById("screen");
+    screen.classList.remove("atsea", "onshore", "checking", "status");
     screen.classList.add("atsea");
-    screen.classList.remove("onshore", "checking", "status");
 
     const mode = document.getElementById("currentMode");
     mode.innerHTML = "Checking Out";
 
     const sceneWrap = document.getElementById("sceneWrap");
     sceneWrap.innerHTML = "";
+    sceneWrap.classList.remove("atsea", "onshore", "unknown", "status");
+    
     const scene = document.createElement("div");
     scene.id = "scene";
     scene.classList.add("scannedArea");
@@ -207,18 +216,20 @@ function checkOut() {
 
 function checkIn() {
     const screen = document.getElementById("screen");
+    screen.classList.remove("atsea", "onshore", "checking", "status");
     screen.classList.add("onshore");
-    screen.classList.remove("atsea", "checking", "status");
 
     const mode = document.getElementById("currentMode");
     mode.innerHTML = "Checking In";
 
     const sceneWrap = document.getElementById("sceneWrap");
     sceneWrap.innerHTML = "";
+    sceneWrap.classList.remove("atsea", "onshore", "unknown", "status");
 
     const scene = document.createElement("div");
     scene.id = "scene";
     scene.classList.add("scannedArea");
+    /*screen.classList.add("onshore");*/
     sceneWrap.appendChild(scene);
 
     const div = document.createElement("div");
@@ -461,18 +472,22 @@ function status() {
     const scan = document.getElementById("scan");
     scan.classList.add("hidden");
     currentMode = "Status";
+
+    checkResize();
 }
 
 function checkTag() {
     const screen = document.getElementById("screen");
+    screen.classList.remove("atsea", "onshore", "checking", "status");
     screen.classList.add("checking");
-    screen.classList.remove("atsea", "onshore", "status");
 
     const mode = document.getElementById("currentMode");
     mode.innerHTML = "Check Tags";
 
     const sceneWrap = document.getElementById("sceneWrap");
     sceneWrap.innerHTML = "";
+    sceneWrap.classList.remove("atsea", "onshore", "unknown", "status");
+    
     const scene = document.createElement("div");
     scene.id = "scene";
     scene.classList.add("scannedArea");
@@ -530,6 +545,48 @@ function regattaLoaded(sailors) {
     statusSummary();
 }
 
+function checkResize() {
+    const minFont = 9;
+    /* When the window is 900px high, font-size is 12px
+    const targetAspectRatio = 9/16;
+    /*const fontAspectRatio = 0.519; /* From a google search */
+    const fontAspectRatio = 0.46; /* https://dbaron.org/css/fonts/aspect_results */
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let fHeight = viewportHeight / 75;
+    let fWidth = viewportWidth / (75 * fontAspectRatio);
+
+    /*let target = Math.floor(Math.max(Math.min(fHeight, fWidth), 8));*/
+    let target = Math.max(Math.min(fHeight, fWidth), 8);
+
+    html = document.querySelector('HTML');
+    fontSizeString = html.style.fontSize;
+    currentFontSize = parseFloat(fontSizeString.substring(0, fontSizeString.lastIndexOf("px")));
+    if (!currentFontSize) currentFontSize = 0;
+    //console.log(`Proposed font size: ${currentFontSize} -> ${target}`);
+    if (currentFontSize != target) html.style.fontSize = `${target}px`;
+    
+    const statusTableInnerClass = document.getElementsByClassName("statusTableInner");
+    if (statusTableInnerClass.length > 0) {
+	const statusTableInner = statusTableInnerClass[0];
+    
+	let w = statusTableInner.scrollWidth;
+	if (!w) w = 0;
+	const newW = window.innerWidth - 5;
+	
+	//console.log(`innerTable width ${w} ->  ${newW}`);
+	if (Math.abs(w-newW) > 2) {
+	    statusTableInner.style.width = `${newW}px`;
+	}
+
+	let h = statusTableInner.scrollHeight;
+	const newH = window.innerHeight;
+	statusTableInner.style.height = `calc(${newH}px - calc(17rem))`;
+    }
+}
+
 function initialize() {
     let queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
@@ -564,7 +621,8 @@ function initialize() {
 	download: true,
 	complete: regattaLoaded
     });
-    
+
+    window.addEventListener('resize', checkResize);
 }
 
 //window.addEventListener('DOMContentLoaded', initialize);
