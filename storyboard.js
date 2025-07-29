@@ -46,6 +46,8 @@ const sailorFieldLabels = {
 
 let currentMode = null;
 
+let pointerState = {};
+
 function changeSailorStatus(row, status) {
     // This is where an external database update would happen
     const statusIndex = sailorFields["Status"]
@@ -77,7 +79,8 @@ function scanned(row) {
     const sailNumber = sailor[sailorFields["Sail Number"]];
     const sailClass = sailor[sailorFields["Class"]];
     const timestamp = sailor[sailorFields["Last Updated"]];
-    const status =  sailor[sailorFields["Status"]];
+    let status =  sailor[sailorFields["Status"]];
+    if (status == "") status = "Unknown";
 
     let div;
     const sceneWrap = document.getElementById("sceneWrap");
@@ -94,34 +97,16 @@ function scanned(row) {
     const ss = document.createElement("div");
     ss.innerHTML = "";
     scene.appendChild(ss);
-	
-    div = document.createElement("div");
-    div.innerHTML = `${status}`;
-    div.classList.add(statusClasses[status]);
-    ss.appendChild(div);
 
-    div = document.createElement("div");
-    div.innerHTML = '&nbsp;';
-    div.classList.add(statusClasses[status]);
-    ss.appendChild(div);
-
-    div = document.createElement("div");
-    div.innerHTML = `${first} ${last}`;
-    ss.appendChild(div);
-	
-    div = document.createElement("div");
-    div.innerHTML = `Class: ${sailClass}`;
-    ss.appendChild(div);
-	
-    div = document.createElement("div");
-    div.innerHTML = `Sail/Bib: ${sailNumber}`;
-    ss.appendChild(div);
-	
-    div = document.createElement("div");
-    div.innerHTML = `${timestamp}`;
-    ss.appendChild(div);
-
-    // Spacer div
+    const fields = [`${status}`, '&nbsp;', `${first} ${last}`, `Class: ${sailClass}`, `Sail/Bib: ${sailNumber}`, `${timestamp}`];
+    for (f of fields) {
+	div = document.createElement("div");
+	div.innerHTML = f;
+	//div.classList.add(statusClasses[status]);
+	ss.appendChild(div);
+    }
+    
+    // Spacer div to allow Change Status button to get pushed to bottom
     div = document.createElement("div");
     scene.appendChild(div);
     
@@ -135,57 +120,36 @@ function scanned(row) {
 }
 
 function genStatusSummary() {
-    const summary = document.createElement("div");
-    summary.classList.add("statusSummary");
-
-    let span;
-    
-    const otw = document.createElement("div");
-    otw.classList.add("statusItem");
-    otw.classList.add("atsea");
-    span = document.createElement("span");
-    span.innerHTML = `<div>Sailing</div><div class="count-otw"></div>`;
-    otw.appendChild(span);
-    summary.appendChild(otw);
-    
-    const onShore = document.createElement("div");
-    onShore.classList.add("statusItem");
-    onShore.classList.add("onshore");
-    span = document.createElement("span");
-    span.innerHTML = `<div>Shore</div><div class="count-onshore"></div>`;
-    onShore.appendChild(span);
-    summary.appendChild(onShore);
-    
-    const unknown = document.createElement("div");
-    unknown.classList.add("statusItem");
-    unknown.classList.add("unknown");
-    span = document.createElement("span");
-    span.innerHTML = `<div>Unknown</div><div class="count-unknown"></div>`;
-    unknown.appendChild(span);
-    summary.appendChild(unknown);
-
-    return summary;
+    const summaryBar = document.createElement("div");
+    summaryBar.classList.add("statusSummary");
+    for (const ff of [["atsea", `<div>Sailing</div><div class="count-otw"></div>`],
+		      ["onshore", `<div>Shore</div><div class="count-onshore"></div>`],
+		      ["unknown", `<div>Unknown</div><div class="count-unknown"></div>`]]) {
+	const div = document.createElement("div");
+	div.classList.add("statusItem", ff[0]);
+	span = document.createElement("span");
+	span.innerHTML = ff[1];
+	div.appendChild(span);
+	summaryBar.appendChild(div);
+    }
+    return summaryBar;
 }
 
+/* scan() is a stub for scanning an RFID tag. To simulate we choose a random sailor
+ * the csv file uses lines 0 & 1 for event name and column titles so sailors start
+ * on line 2.
+ *
+ * A real scanner would find the db record (or table index) with the matching tag
+ */
 function scan() {
     console.log(`Scan clicked current mode ${currentMode}`);
 
-    if (currentMode == "CheckOut") {
-	let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
-	changeSailorStatus(sailorRow, "On the water");
-	scanned(sailorRow);
-    }
+    let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
 
-    if (currentMode == "CheckIn") {
-	let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
-	changeSailorStatus(sailorRow, "On shore");
-	scanned(sailorRow);
-    }
+    if (currentMode == "CheckOut") changeSailorStatus(sailorRow, "On the water");
+    if (currentMode == "CheckIn") changeSailorStatus(sailorRow, "On shore");
 
-    if (currentMode == "CheckTag") {
-	let sailorRow = Math.floor(Math.random()*(Sailors.data.length - 2)) + 2;
-	scanned(sailorRow);
-    }
+    scanned(sailorRow);
 }
 
 function checkOut() {
@@ -304,36 +268,16 @@ function changeStatusManually(e) {
     div = document.createElement("div");
     dialog.appendChild(div);
     div.innerHTML = "Change To";
-    
-    div = document.createElement("div");
-    div.classList.add("button");
-    div.classList.add("modalButton");
-    div.classList.add(statusClasses["On the water"]);
-    div.innerHTML = `${statusLabels["On the water"]}`;
-    div.addEventListener("click", enableConfirm);
-    div.sailorRow = sailorRow;
-    div.sailorAction = "On the water";
-    dialog.appendChild(div);
-    
-    div = document.createElement("div");
-    div.classList.add("button");
-    div.classList.add("modalButton");
-    div.classList.add(statusClasses["On shore"]);
-    div.innerHTML = `${statusLabels["On shore"]}`;
-    div.addEventListener("click", enableConfirm);
-    div.sailorRow = sailorRow;
-    div.sailorAction = "On shore";
-    dialog.appendChild(div);
 
-    div = document.createElement("div");
-    div.classList.add("button");
-    div.classList.add("modalButton");
-    div.classList.add(statusClasses[""]);
-    div.innerHTML = `${statusLabels[""]}`;
-    div.addEventListener("click", enableConfirm);
-    div.sailorRow = sailorRow;
-    div.sailorAction = "Unknown";
-    dialog.appendChild(div);
+    for (const status of ["On the water", "On shore", "Unknown"]) {
+	div = document.createElement("div");
+	div.classList.add("button", "modalButton", statusClasses[status]);
+	div.innerHTML = `${statusLabels[status]}`;
+	div.addEventListener("click", enableConfirm);
+	div.sailorRow = sailorRow;
+	div.sailorAction = status;
+	dialog.appendChild(div);
+    }
     
     div = document.createElement("div");
     dialog.appendChild(div);
@@ -343,22 +287,16 @@ function changeStatusManually(e) {
     confirmBar.classList.add("modalConfirm");
     dialog.appendChild(confirmBar);
 
-    div = document.createElement("div");
-    div.classList.add("button");
-    div.classList.add("neutral");
-    div.classList.add("modalButton");
-    div.innerHTML = "Cancel";
-    div.addEventListener("click", confirm);
-    confirmBar.appendChild(div);
+    for (const label of ["Cancel", "OK"]) {
+	div = document.createElement("div");
+	div.classList.add("button");
+	div.classList.add("neutral");
+	div.classList.add("modalButton");
+	div.innerHTML = label;
+	div.addEventListener("click", confirm);
+	confirmBar.appendChild(div);
+    }
     
-    div = document.createElement("div");
-    div.classList.add("button");
-    div.classList.add("neutral");
-    div.classList.add("modalButton");
-    div.innerHTML = "OK";
-    div.addEventListener("click", confirm);
-    confirmBar.appendChild(div);
-
     dialog.showModal();
 }
 
@@ -431,15 +369,14 @@ function statusSummary() {
 	}
     }
     
-    for (const el of document.getElementsByClassName("count-otw")) {
+    for (const el of document.getElementsByClassName("count-otw"))
 	el.innerHTML = onTheWater;
-    }
-    for (const el of document.getElementsByClassName("count-onshore")) {
+
+    for (const el of document.getElementsByClassName("count-onshore"))
 	el.innerHTML = onShore;
-    }
-    for (const el of document.getElementsByClassName("count-unknown")) {
+
+    for (const el of document.getElementsByClassName("count-unknown"))
 	el.innerHTML = unknown;
-    }
     
     return({"On the water": onTheWater, "On shore": onShore, "Unknown": unknown});
 }
@@ -502,16 +439,16 @@ function checkTag() {
     currentMode = "CheckTag";
 }
 
-const menuItems = [
+const modeMenuItems = [
     { "label": "Check Out", "action": checkOut},
     { "label": "Check In", "action": checkIn },
     { "label": "Check Tag", "action": checkTag},
     { "label": "Status", "action": status},
 ];
 
-function createMenu() {
-    const m = document.getElementById("modeContent");
-    for (let e of menuItems) {
+function createModeMenu() {
+    const m = document.getElementById("modeMenuContent");
+    for (let e of modeMenuItems) {
 	let i = document.createElement("div");
 	i.innerHTML = e.label;
 	i.addEventListener("click", e.action);
@@ -547,26 +484,31 @@ function regattaLoaded(sailors) {
 
 function checkResize() {
     const minFont = 9;
+    let screenHeightInLines = 75;
+    screenHeightInLines = 66;
     /* When the window is 900px high, font-size is 12px
     const targetAspectRatio = 9/16;
-    /*const fontAspectRatio = 0.519; /* From a google search */
-    const fontAspectRatio = 0.46; /* https://dbaron.org/css/fonts/aspect_results */
+    const fontAspectRatio = 0.519; /* From a google search */
+    /*const fontAspectRatio = 0.46; /* https://dbaron.org/css/fonts/aspect_results */
 
+    const fontAspectRatio = 0.519; /* From a google search */
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    let fHeight = viewportHeight / 75;
-    let fWidth = viewportWidth / (75 * fontAspectRatio);
+    let fHeight = viewportHeight / screenHeightInLines;
+    let fWidth = viewportWidth / (screenHeightInLines * fontAspectRatio);
 
     /*let target = Math.floor(Math.max(Math.min(fHeight, fWidth), 8));*/
     let target = Math.max(Math.min(fHeight, fWidth), 8);
 
-    html = document.querySelector('HTML');
-    fontSizeString = html.style.fontSize;
-    currentFontSize = parseFloat(fontSizeString.substring(0, fontSizeString.lastIndexOf("px")));
+    const html = document.querySelector('HTML');
+    const fontSizeString = html.style.fontSize;
+    let currentFontSize = parseFloat(fontSizeString.substring(0, fontSizeString.lastIndexOf("px")));
     if (!currentFontSize) currentFontSize = 0;
-    //console.log(`Proposed font size: ${currentFontSize} -> ${target}`);
-    if (currentFontSize != target) html.style.fontSize = `${target}px`;
+    if (currentFontSize != target) {
+	console.log(`Font size: ${currentFontSize} -> ${target}`);
+	html.style.fontSize = `${target}px`;
+    }
     
     const statusTableInnerClass = document.getElementsByClassName("statusTableInner");
     if (statusTableInnerClass.length > 0) {
@@ -576,15 +518,20 @@ function checkResize() {
 	if (!w) w = 0;
 	const newW = window.innerWidth - 5;
 	
-	//console.log(`innerTable width ${w} ->  ${newW}`);
 	if (Math.abs(w-newW) > 2) {
+	    //console.log(`innerTable width ${w} ->  ${newW}`);
 	    statusTableInner.style.width = `${newW}px`;
 	}
 
 	let h = statusTableInner.scrollHeight;
-	const newH = window.innerHeight;
+	const newH = window.innerHeight; /* a little bit of margin */
 	statusTableInner.style.height = `calc(${newH}px - calc(17rem))`;
     }
+}
+
+function touch2Mouse(e) {
+    const t = e.target;
+    //console.log(`Touch2mouse ${t.id}`);
 }
 
 function initialize() {
@@ -598,8 +545,9 @@ function initialize() {
     
     const href = window.location.href;
 
-    menuItems[0].action();
-    createMenu();
+    // Set the app to what ever state is the first pull down menu item
+    modeMenuItems[0].action();
+    createModeMenu();
 
     const summaryContainer = document.getElementById("summaryBar");
     const summary = genStatusSummary();
@@ -608,6 +556,13 @@ function initialize() {
 
     const b = document.getElementById("scan");
     b.addEventListener("click", scan);
+
+    /* adding these listeners somehow enables "click" events on
+     * touch devices even though touch2Mouse doesn't do anything.
+     */
+    document.addEventListener("touchstart", touch2Mouse, true);
+    document.addEventListener("touchmove", touch2Mouse, true);
+    document.addEventListener("touchend", touch2Mouse, true);
 
     const intervalID = setInterval(updateClock, 1000);
 
@@ -623,6 +578,7 @@ function initialize() {
     });
 
     window.addEventListener('resize', checkResize);
+    checkResize();
 }
 
 //window.addEventListener('DOMContentLoaded', initialize);
